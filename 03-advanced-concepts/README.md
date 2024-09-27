@@ -4,8 +4,8 @@
 Contains following folders: 
 - reranking
 
-### Reranking Model
-In the context of RAG systems, reranker refers to a secondary document filtering mechanism responsible for reordering the documents retrieved by the initial retrieval module. This reordering process is designed to enhance the quality of document ranking. In general, rerankers aim to strike a balance between efficiency and effectiveness, prioritizing the improvement of search result quality. 
+### Dynamic Metadata Filtering
+This notebook demonstrates how to implement dynamic metadata filtering for Knowledge Bases for Amazon Bedrock using the tool use (function calling) capability and Pydantic for data validation. By leveraging this approach, you can enhance the flexibility and accuracy of retrieval-augmented generation (RAG) applications, leading to more relevant and contextually appropriate AI-generated responses.
 
 ## Contributing
 
