@@ -19,15 +19,17 @@ Contains following folders:
 
 ### 02-optimizing-accuracy-retrieved-results
 - [advanced_chunking_options.ipynb](./02-optimizing-accuracy-retrieved-results/advanced_chunking_options.ipynb) - This notebook provides sample code for various advance chunking strategies (Fixed, Semantic, & Hierarchical) offered Amazon Bedrock Knowledge Bases for building optimum RAG applcation.
+  
 - [query_reformulation.ipynb](./02-optimizing-accuracy-retrieved-results/query_reformulation.ipynb) - This notebook provides sample code for query reformulation which takes a complex input query and break it into multiple sub-queries. These sub-queries will then separately go through their own retrieval steps to find relevant chunks. In this process, the subqueries having less semantic complexity might find more targeted chunks. These chunks will then be pooled and ranked together before passing them to the FM to generate a response.
+  
 - [csv_metadata_customization.ipynb](./02-optimizing-accuracy-retrieved-results/csv_metadata_customization.ipynb) - This notebook provides sample code walkthrough for `CSV metadata customization` feature, a newly realsed feautre for Amazon Bedrock Knowledge Bases.
-- [metadata_filtering.ipynb](./02-optimizing-accuracy-retrieved-results/metadata_filtering.ipynb) - This notebook provides sample code walkthrough for 'metadata filtering' feature, for Amazon Bedrock Knowledge Bases .
+  
+- [metadata_filtering.ipynb](./02-optimizing-accuracy-retrieved-results/metadata_filtering.ipynb) - This notebook provides sample code walkthrough for 'metadata filtering' feature, for Amazon Bedrock Knowledge Bases.
 
 ### 03-advanced-concepts
 
 - Provides sample code that demonstrates advanced concepts that could be applied to improve retrieval quality/results for Knowledge Base on Amazon Bedrock.
-- [dynamic-metadata-filtering.ipynb](./03-advanced-concepts/dynamic-metadata-filtering
-/dynamic-metadata-filtering-KB.ipynb)
+- [dynamic-metadata-filtering-KB.ipynb](./03-advanced-concepts/dynamic-metadata-filtering/dynamic-metadata-filtering-KB.ipynb) - This notebook demonstrates how to implement dynamic metadata filtering for Knowledge Bases for Amazon Bedrock using the tool use (function calling) capability and Pydantic for data validation. By leveraging this approach, you can enhance the flexibility and accuracy of retrieval-augmented generation (RAG) applications, leading to more relevant and contextually appropriate AI-generated responses.
 
 ### 04-responsible-ai
 - Provides sample code for creating knowledge base and associated data sources using AWS CloudFormation templates.
