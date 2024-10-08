@@ -19,6 +19,7 @@ s3_policy_name = f'AmazonBedrockS3PolicyForKnowledgeBase_{suffix}'
 sm_policy_name = f'AmazonBedrockSecretPolicyForKnowledgeBase_{suffix}'
 oss_policy_name = f'AmazonBedrockOSSPolicyForKnowledgeBase_{suffix}'
 
+sm_policy_flag = False
 
 def create_bedrock_execution_role(bucket_name):
     foundation_model_policy_document = {
@@ -214,15 +215,19 @@ def delete_iam_role_and_policies():
         RoleName=bedrock_execution_role_name,
         PolicyArn=oss_policy_arn
     )
-    iam_client.detach_role_policy(
-        RoleName=bedrock_execution_role_name,
-        PolicyArn=sm_policy_arn
-    )
+
+    # Delete Secrets manager policy only if it was created (i.e. for Confluence, SharePoint or Salesforce data source)
+    if sm_policy_flag:
+        iam_client.detach_role_policy(
+            RoleName=bedrock_execution_role_name,
+            PolicyArn=sm_policy_arn
+        )
+        iam_client.delete_policy(PolicyArn=sm_policy_arn)
     iam_client.delete_role(RoleName=bedrock_execution_role_name)
     iam_client.delete_policy(PolicyArn=s3_policy_arn)
     iam_client.delete_policy(PolicyArn=fm_policy_arn)
     iam_client.delete_policy(PolicyArn=oss_policy_arn)
-    iam_client.delete_policy(PolicyArn=sm_policy_arn)
+    
     return 0
 
 
@@ -330,6 +335,7 @@ def create_bedrock_execution_role_multi_ds(bucket_names = None, secrets_arns = N
 
     # 3. Cretae and attach policy for secrets manager
     if secrets_arns:
+        sm_policy_flag = True
         secrets_manager_policy_document = {
             "Version": "2012-10-17",
             "Statement": [
