@@ -468,7 +468,6 @@ class BedrockKnowledgeBase:
         # combine all policies into one list from policy documents
         policies = [
             (self.fm_policy_name, foundation_model_policy_document, 'Policy for accessing foundation model'),
-            (self.bda_policy_name, bda_policy_document, 'Policy for accessing BDA'),
             (self.cw_log_policy_name, cw_log_policy_document, 'Policy for writing logs to CloudWatch Logs'),
         ]
         if self.bucket_names:
@@ -477,6 +476,8 @@ class BedrockKnowledgeBase:
             policies.append((self.sm_policy_name, secrets_manager_policy_document, 'Policy for accessing secret manager'))
         if self.chunking_strategy == 'CUSTOM':
             policies.append((self.lambda_policy_name, lambda_policy_document, 'Policy for invoking lambda function'))
+        if self.multi_modal:
+            policies.append((self.bda_policy_name, bda_policy_document, 'Policy for accessing BDA'))
 
         # create bedrock execution role
         bedrock_kb_execution_role = self.iam_client.create_role(
@@ -802,11 +803,12 @@ class BedrockKnowledgeBase:
         return kb, ds_list
     
     def create_data_sources(self, kb_id, data_sources):
+        """
+        Create Data Sources for the Knowledge Base. 
+        """
         ds_list=[]
 
-        chunking_strategy_configuration = self.create_chunking_strategy_config(self.chunking_strategy)
-        print("============Chunking config========\n", chunking_strategy_configuration)
-
+        # create data source for each data source type in list data_sources
         for idx, ds in enumerate(data_sources):
 
             # The data source to ingest documents from, into the OpenSearch serverless knowledge base index
@@ -981,7 +983,10 @@ class BedrockKnowledgeBase:
                 
 
             # Create a DataSource in KnowledgeBase 
-            vector_ingestion_configuration = { "chunkingConfiguration": chunking_strategy_configuration['chunkingConfiguration']}
+            chunking_strategy_configuration = self.create_chunking_strategy_config(self.chunking_strategy)
+            print("============Chunking config========\n", chunking_strategy_configuration)
+            vector_ingestion_configuration = chunking_strategy_configuration
+
             if self.multi_modal:
                 if self.parser == "BEDROCK_FOUNDATION_MODEL":
                     parsing_configuration = {"bedrockFoundationModelConfiguration": 
@@ -1061,6 +1066,50 @@ class BedrockKnowledgeBase:
         
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
+
+            # delete knowledge base and data source.
+            
+            # Delete knowledge base and data sources
+            try:
+                # First delete all data sources
+                for ds in self.data_source:
+                    try:
+                        self.bedrock_agent_client.delete_data_source(
+                            dataSourceId=ds["dataSourceId"],
+                            knowledgeBaseId=self.knowledge_base['knowledgeBaseId']
+                        )
+                        print(f"Deleted data source {ds['dataSourceId']}")
+                    except self.bedrock_agent_client.exceptions.ResourceNotFoundException:
+                        print(f"Data source {ds['dataSourceId']} not found")
+                    except Exception as e:
+                        print(f"Error deleting data source {ds['dataSourceId']}: {str(e)}")
+
+                # Then delete the knowledge base
+                self.bedrock_agent_client.delete_knowledge_base(
+                    knowledgeBaseId=self.knowledge_base['knowledgeBaseId']
+                )
+                print("======== Knowledge base and all data sources deleted =========")
+            
+            except self.bedrock_agent_client.exceptions.ResourceNotFoundException as e:
+                print("Knowledge base not found:", e)
+            except Exception as e:
+                print(f"Error during knowledge base deletion: {str(e)}")
+
+            # delete s3 bucket
+            if delete_s3_bucket==True:
+                    self.delete_s3()
+                    
+            # delete IAM role and policies
+            if delete_iam_roles_and_policies:
+                self.delete_iam_roles_and_policies()
+            
+            if delete_lambda_function:
+                try:
+                    self.delete_lambda_function()
+                    print(f"Deleted Lambda function {self.lambda_function_name}")
+                except self.lambda_client.exceptions.ResourceNotFoundException:
+                    print(f"Lambda function {self.lambda_function_name} not found.")
+
             # delete vector index and collection from vector store
             try:
                 self.aoss_client.delete_collection(id=self.collection_id)
@@ -1080,39 +1129,7 @@ class BedrockKnowledgeBase:
             except Exception as e:
                 print(e)
 
-            # delete knowledge base and vector store.
             
-            try:
-                self.bedrock_agent_client.delete_data_source(
-                    dataSourceId=self.data_source["dataSourceId"],
-                    knowledgeBaseId=self.knowledge_base['knowledgeBaseId']
-                )
-                self.bedrock_agent_client.delete_knowledge_base(
-                    knowledgeBaseId=self.knowledge_base['knowledgeBaseId']
-                )
-                print("======== Knowledge base and data source deleted =========")
-            except self.bedrock_agent_client.exceptions.ResourceNotFoundException as e:
-                print("Resource not found", e)
-                pass
-            except Exception as e:
-                print(e)
-
-            # delete s3 bucket
-            if delete_s3_bucket==True:
-                    self.delete_s3()
-                    
-            # delete IAM role and policies
-            if delete_iam_roles_and_policies:
-                self.delete_iam_roles_and_policies()
-            
-            if delete_lambda_function:
-                try:
-                    self.delete_lambda_function()
-                    print(f"Deleted Lambda function {self.lambda_function_name}")
-                except self.lambda_client.exceptions.ResourceNotFoundException:
-                    print(f"Lambda function {self.lambda_function_name} not found.")
-                    
-
     def delete_iam_roles_and_policies(self):
         for role_name in self.roles:
             print(f"Found role {role_name}")
@@ -1148,35 +1165,29 @@ class BedrockKnowledgeBase:
         Once the bucket is empty, delete the bucket
         """
         s3 = boto3.resource('s3')
-        try:
-            objects = self.s3_client.list_objects(Bucket=self.bucket_name)
-            if 'Contents' in objects:
-                for obj in objects['Contents']:
-                    self.s3_client.delete_object(Bucket=self.bucket_name, Key=obj['Key'])
-            self.s3_client.delete_bucket(Bucket=self.bucket_name)
-            print("======== S3 data bucket deleted =========")
-        except Exception as e:
-            print(e)
+        bucket_names = self.bucket_names.copy()
+        if self.intermediate_bucket_name:
+            bucket_names.append(self.intermediate_bucket_name)
 
-        if self.intermediate_bucket_name is not None:
-            bucket = s3.Bucket(self.intermediate_bucket_name)
-            print("intermediate bucket: ", bucket)
-            if bucket in s3.buckets.all():
-                print(f"Found intermediate bucket {self.intermediate_bucket_name}")
-                try:
-                    objects = self.s3_client.list_objects(Bucket=self.intermediate_bucket_name)
-                    if 'Contents' in objects:
-                        for obj in objects['Contents']:
-                            print(f"Deleting {obj['Key']}")
-                            self.s3_client.delete_object(Bucket=self.intermediate_bucket_name, Key=obj['Key'])
-                        print("======== Intermediate S3 bucket emptied - will wait for 20s before deleting bucket =========")
-                        interactive_sleep(20)
-                    self.s3_client.delete_bucket(Bucket=self.intermediate_bucket_name)
-                    print("======== Intermediate S3 bucket deleted =========")
-                except Exception as e:
-                    print(f"{self.intermediate_bucket_name} does not exist, therefore, will skip deleting")
-        else:
-            print("No intermediate bucket found")
+        for bucket_name in bucket_names:
+            try:
+                bucket = s3.Bucket(bucket_name)
+                if bucket in s3.buckets.all():
+                    print(f"Found bucket {bucket_name}")
+                    # Delete all objects including versions (if versioning enabled)
+                    bucket.object_versions.delete()
+                    bucket.objects.all().delete()
+                    print(f"Deleted all objects in bucket {bucket_name}")
+                    
+                    # Delete the bucket
+                    bucket.delete()
+                    print(f"Deleted bucket {bucket_name}")
+                else:
+                    print(f"Bucket {bucket_name} does not exist, skipping deletion")
+            except Exception as e:
+                print(f"Error deleting bucket {bucket_name}: {str(e)}")
+
+        print("======== S3 bucket deletion process completed =========")
 
 
     def delete_lambda_function(self):
