@@ -613,22 +613,22 @@ def get_video_from_metadata(bucket, key):
             video_key = metadata.get('s3_key')
             
             if video_bucket and video_key:
-                # Generate presigned URL
-                video_url = s3_client.generate_presigned_url(
-                    'get_object',
-                    Params={
-                        'Bucket': video_bucket,
-                        'Key': video_key
-                    },
-                    ExpiresIn=3600  # URL expires in 1 hour
+                # Get the video file directly from S3
+                video_response = s3_client.get_object(
+                    Bucket=video_bucket,
+                    Key=video_key
                 )
                 
-                # Display video directly using the presigned URL
-                from IPython.display import display, HTML
+                # Read the video content
+                video_content = video_response['Body'].read()
                 
+                # Encode to base64
+                video_base64 = base64.b64encode(video_content).decode()
+                
+                # Create the video player HTML with base64 data
                 video_player = HTML(f"""
                 <video width="800" height="600" controls>
-                    <source src="{video_url}" type="video/x-m4v">
+                    <source src="data:video/mp4;base64,{video_base64}" type="video/mp4">
                     Your browser does not support the video tag.
                 </video>
                 """)
@@ -642,3 +642,4 @@ def get_video_from_metadata(bucket, key):
     except Exception as e:
         print(f"Error playing video: {str(e)}")
         return False
+

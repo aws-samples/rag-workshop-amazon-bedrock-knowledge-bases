@@ -16,3 +16,4 @@ pypdf
 tqdm
 pandas
 haystack-ai
+datasets
