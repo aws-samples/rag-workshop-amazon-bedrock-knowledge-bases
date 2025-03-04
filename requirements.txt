@@ -3,7 +3,7 @@ opensearch-py
 botocore
 awscli
 retrying
-ragas
+ragas==0.1.9
 ipywidgets
 iprogress
 langchain
