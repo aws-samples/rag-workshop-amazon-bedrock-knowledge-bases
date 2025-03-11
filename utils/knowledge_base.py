@@ -749,13 +749,19 @@ class BedrockKnowledgeBase:
 
     def create_chunking_strategy_config(self, strategy):
         configs = {
-            "GRAPH": {"graphContextConfiguration": {
-                "contextExtractionStrategy": "BEDROCK_FOUNDATION_MODEL",
-                "bedrockFoundationModelConfiguration": {
-                    "modelArn": f"arn:aws:bedrock:{self.region_name}::foundation-model/{self.graph_model}"
+           
+            "GRAPH": {
+                "contextEnrichmentConfiguration": { 
+                        "bedrockFoundationModelConfiguration": { 
+                            "enrichmentStrategyConfiguration": { 
+                                "method": "CHUNK_ENTITY_EXTRACTION"
+                            },
+                            "modelArn": f"arn:aws:bedrock:{self.region_name}::foundation-model/{self.graph_model}"
+                        },
+                        "type": "BEDROCK_FOUNDATION_MODEL"
                 }
-            }
-                     },
+            },
+                    
             "NONE": {
                 "chunkingConfiguration": {"chunkingStrategy": "NONE"}
             },
