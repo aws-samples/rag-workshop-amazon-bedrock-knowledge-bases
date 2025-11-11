@@ -352,16 +352,30 @@ class BedrockKnowledgeBase:
             "Version": "2012-10-17",
             "Statement": [
                 {
+                    "Sid": "BedrockInvokeModelStatement",
                     "Effect": "Allow",
                     "Action": [
                         "bedrock:InvokeModel",
                     ],
                     "Resource": [
-                        f"arn:aws:bedrock:{self.region_name}::foundation-model/{self.embedding_model}",
-                        f"arn:aws:bedrock:{self.region_name}::foundation-model/{self.generation_model}",
-                        f"arn:aws:bedrock:{self.region_name}::foundation-model/{self.reranking_model}",
-                        f"arn:aws:bedrock:{self.region_name}::foundation-model/{self.graph_model}"
+                        f"arn:aws:bedrock:{self.region_name}::foundation-model/{self.embedding_model}"
                     ]
+                },
+                {
+                    "Sid": "MarketplaceOperationsFromBedrockFor3pModels",
+                    "Effect": "Allow",
+                    "Action": [
+                        "aws-marketplace:Subscribe",
+                        "aws-marketplace:ViewSubscriptions",
+                        "aws-marketplace:Unsubscribe",
+                        "aws-marketplace:List*"
+                    ],
+                    "Resource": "*",
+                    "Condition": {
+                            "StringEquals": {
+                                "aws:CalledViaLast": "bedrock.amazonaws.com"
+                            }
+                        }
                 }
             ]
         }
@@ -498,7 +512,7 @@ class BedrockKnowledgeBase:
         # combine all policies into one list from policy documents
         policies = [
             (self.fm_policy_name, foundation_model_policy_document, 'Policy for accessing foundation model'),
-            (self.cw_log_policy_name, cw_log_policy_document, 'Policy for writing logs to CloudWatch Logs'),
+            (self.cw_log_policy_name, cw_log_policy_document, 'Policy for writing logs to CloudWatch Logs')
         ]
         if self.bucket_names:
             policies.append((self.s3_policy_name, s3_policy_document, 'Policy for reading documents from s3'))
