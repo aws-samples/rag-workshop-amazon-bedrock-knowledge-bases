@@ -6,10 +6,10 @@ retrying
 ragas
 ipywidgets
 iprogress
-langchain
-langchain_aws
-langchain-core
-langchain_community
+langchain == 0.3.17
+langchain_aws == 0.2.10
+langchain-core == 0.3.34
+langchain_community == 0.3.16
 s3fs
 requests
 pypdf
